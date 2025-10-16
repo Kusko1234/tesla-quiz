@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, LogOut, Copy, Home, FileText, Edit2 } from 'lucide-react';
+import { Plus, Trash2, LogOut, Home, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Question, Quiz } from '@/types/quiz';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -17,20 +17,44 @@ export default function AdminDashboard() {
   const [questions, setQuestions] = useState<Question[]>([
     { id: '1', question: '', options: ['', '', '', ''], type: 'single' }
   ]);
-  const [savedQuizzes, setSavedQuizzes] = useState<Quiz[]>([]);
-  const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const isAuth = localStorage.getItem('adminAuth');
     if (!isAuth) {
       navigate('/admin/login');
+      return;
     }
-    loadSavedQuizzes();
+    loadActiveQuiz();
   }, [navigate]);
 
-  const loadSavedQuizzes = () => {
-    const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-    setSavedQuizzes(quizzes);
+  const loadActiveQuiz = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('active_quiz')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading quiz:', error);
+        toast.error('Chyba při načítání quizu');
+        return;
+      }
+
+      if (data) {
+        setQuizTitle(data.title);
+        setQuizDescription(data.description || '');
+        setQuestions(data.questions as Question[]);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Chyba při načítání quizu');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -74,57 +98,59 @@ export default function AdminDashboard() {
     setQuestions(newQuestions);
   };
 
-  const handleSaveQuiz = () => {
-    const quiz: Quiz = {
-      id: editingQuizId || Date.now().toString(),
-      title: quizTitle,
-      description: quizDescription,
-      questions: questions,
-      createdAt: editingQuizId ? savedQuizzes.find(q => q.id === editingQuizId)?.createdAt || new Date().toISOString() : new Date().toISOString(),
-    };
+  const handleSaveQuiz = async () => {
+    try {
+      setSaving(true);
 
-    let updatedQuizzes;
-    if (editingQuizId) {
-      updatedQuizzes = savedQuizzes.map(q => q.id === editingQuizId ? quiz : q);
-      toast.success('Quiz byl úspěšně aktualizován');
-    } else {
-      updatedQuizzes = [...savedQuizzes, quiz];
-      toast.success('Quiz byl úspěšně uložen');
+      // Validate quiz data
+      if (!quizTitle.trim()) {
+        toast.error('Zadejte název quizu');
+        return;
+      }
+
+      const hasEmptyQuestions = questions.some(q => !q.question.trim());
+      if (hasEmptyQuestions) {
+        toast.error('Všechny otázky musí mít vyplněný text');
+        return;
+      }
+
+      const quiz = {
+        id: 1,
+        title: quizTitle,
+        description: quizDescription,
+        questions: questions,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('active_quiz')
+        .upsert(quiz, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Error saving quiz:', error);
+        toast.error('Chyba při ukládání quizu');
+        return;
+      }
+
+      toast.success('Quiz byl úspěšně uložen a je nyní aktivní!');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Chyba při ukládání quizu');
+    } finally {
+      setSaving(false);
     }
-
-    localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-    setSavedQuizzes(updatedQuizzes);
-    setEditingQuizId(null);
   };
 
-  const handleNewQuiz = () => {
-    setQuizTitle('Můj Quiz');
-    setQuizDescription('');
-    setQuestions([{ id: '1', question: '', options: ['', '', '', ''], type: 'single' }]);
-    setEditingQuizId(null);
-  };
-
-  const handleEditQuiz = (quiz: Quiz) => {
-    setQuizTitle(quiz.title);
-    setQuizDescription(quiz.description);
-    setQuestions(quiz.questions);
-    setEditingQuizId(quiz.id);
-  };
-
-  const handleDeleteQuiz = (quizId: string) => {
-    const updatedQuizzes = savedQuizzes.filter(q => q.id !== quizId);
-    localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-    setSavedQuizzes(updatedQuizzes);
-    toast.success('Quiz byl smazán');
-  };
-
-  const copyQuizLink = (quizId?: string) => {
-    const link = quizId 
-      ? `${window.location.origin}/?quiz=${quizId}`
-      : `${window.location.origin}/`;
-    navigator.clipboard.writeText(link);
-    toast.success('Link zkopírován do schránky');
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Načítání...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background p-4">
@@ -132,7 +158,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-2">Vytvořte a spravujte své quizy</p>
+            <p className="text-muted-foreground mt-2">Spravujte aktivní quiz</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate('/')}>
@@ -146,159 +172,98 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <Tabs defaultValue="edit" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="edit">
-              <Edit2 className="w-4 h-4 mr-2" />
-              Editovat Quiz
-            </TabsTrigger>
-            <TabsTrigger value="saved">
-              <FileText className="w-4 h-4 mr-2" />
-              Uložené Quizy ({savedQuizzes.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="edit" className="space-y-6">
-            <div className="flex justify-end">
-              <Button onClick={handleNewQuiz} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Nový Quiz
-              </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Základní informace</CardTitle>
+            <CardDescription>
+              Editujte aktivní quiz - tento quiz uvidí všichni uživatelé
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Název quizu</Label>
+              <Input
+                id="title"
+                value={quizTitle}
+                onChange={(e) => setQuizTitle(e.target.value)}
+                placeholder="Můj nový quiz"
+              />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Popis</Label>
+              <Textarea
+                id="description"
+                value={quizDescription}
+                onChange={(e) => setQuizDescription(e.target.value)}
+                placeholder="Krátký popis quizu..."
+                rows={3}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Otázky ({questions.length}/10)</h2>
+            <Button onClick={addQuestion} disabled={questions.length >= 10}>
+              <Plus className="w-4 h-4 mr-2" />
+              Přidat otázku
+            </Button>
+          </div>
+
+          {questions.map((question, qIndex) => (
+            <Card key={question.id}>
               <CardHeader>
-                <CardTitle>Základní informace</CardTitle>
-                <CardDescription>
-                  {editingQuizId ? 'Editujete existující quiz' : 'Vytvořte nový quiz'}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Otázka {qIndex + 1}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeQuestion(qIndex)}
+                    disabled={questions.length <= 1}
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Název quizu</Label>
+                  <Label>Text otázky</Label>
                   <Input
-                    id="title"
-                    value={quizTitle}
-                    onChange={(e) => setQuizTitle(e.target.value)}
-                    placeholder="Můj nový quiz"
+                    value={question.question}
+                    onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
+                    placeholder={`Zadejte text otázky ${qIndex + 1}`}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Popis</Label>
-                  <Textarea
-                    id="description"
-                    value={quizDescription}
-                    onChange={(e) => setQuizDescription(e.target.value)}
-                    placeholder="Krátký popis quizu..."
-                    rows={3}
-                  />
+                  <Label>Odpovědi</Label>
+                  {question.options.map((option, oIndex) => (
+                    <Input
+                      key={oIndex}
+                      value={option}
+                      onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                      placeholder={`Odpověď ${String.fromCharCode(65 + oIndex)}`}
+                    />
+                  ))}
                 </div>
               </CardContent>
             </Card>
+          ))}
+        </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Otázky ({questions.length}/10)</h2>
-                <Button onClick={addQuestion} disabled={questions.length >= 10}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Přidat otázku
-                </Button>
-              </div>
-
-              {questions.map((question, qIndex) => (
-                <Card key={question.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Otázka {qIndex + 1}</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeQuestion(qIndex)}
-                        disabled={questions.length <= 1}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Text otázky</Label>
-                      <Input
-                        value={question.question}
-                        onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                        placeholder={`Zadejte text otázky ${qIndex + 1}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Odpovědi</Label>
-                      {question.options.map((option, oIndex) => (
-                        <Input
-                          key={oIndex}
-                          value={option}
-                          onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                          placeholder={`Odpověď ${String.fromCharCode(65 + oIndex)}`}
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Button onClick={handleSaveQuiz} className="w-full" size="lg">
-              {editingQuizId ? 'Aktualizovat quiz' : 'Uložit quiz'}
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="saved" className="space-y-4">
-            {savedQuizzes.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-lg text-muted-foreground">Zatím nemáte žádné uložené quizy</p>
-                  <Button onClick={() => document.querySelector('[value="edit"]')?.click()} variant="outline" className="mt-4">
-                    Vytvořit první quiz
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              savedQuizzes.map((quiz) => (
-                <Card key={quiz.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle>{quiz.title}</CardTitle>
-                        <CardDescription className="mt-2">
-                          {quiz.description || 'Bez popisu'}
-                        </CardDescription>
-                        <div className="flex gap-4 mt-3 text-sm text-muted-foreground">
-                          <span>{quiz.questions.length} otázek</span>
-                          <span>Vytvořeno: {new Date(quiz.createdAt).toLocaleDateString('cs-CZ')}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Button onClick={() => { handleEditQuiz(quiz); document.querySelector('[value="edit"]')?.click(); }} variant="outline" className="flex-1">
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        Editovat
-                      </Button>
-                      <Button onClick={() => copyQuizLink(quiz.id)} variant="outline" className="flex-1">
-                        <Copy className="w-4 h-4 mr-2" />
-                        Zkopírovat link
-                      </Button>
-                      <Button onClick={() => handleDeleteQuiz(quiz.id)} variant="destructive" size="icon">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+        <Button onClick={handleSaveQuiz} disabled={saving} className="w-full" size="lg">
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Ukládání...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Uložit aktivní quiz
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
