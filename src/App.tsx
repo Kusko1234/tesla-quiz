@@ -1,26 +1,29 @@
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient();
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import CustomerRegistration from "@/pages/CustomerRegistration";
+import QuizPage from "@/pages/QuizPage";
+import ThankYou from "@/pages/ThankYou";
+import AdminLogin from "@/pages/AdminLogin";
+import AdminDashboard from "@/pages/AdminDashboard";
+import NotFound from "@/pages/NotFound";
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+    <ThemeProvider defaultTheme="light" storageKey="quiz-theme">
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<CustomerRegistration />} />
+          <Route path="/quiz" element={<QuizPage />} />
+          <Route path="/thank-you" element={<ThankYou />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
         <Toaster />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
