@@ -35,7 +35,6 @@ serve(async (req) => {
 
     // Build email HTML content
     let answersHtml = "<h2>Odpovědi:</h2><div style='margin-top: 20px;'>";
-    
     answers.forEach((answer, index) => {
       answersHtml += `
         <div style="margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-radius: 8px;">
@@ -65,7 +64,6 @@ serve(async (req) => {
               <h1 style="margin: 0;">Quiz: ${quizTitle}</h1>
               <p style="margin: 10px 0 0 0;">Nové vyplnění quizu</p>
             </div>
-            
             <div class="info-box">
               <h2 style="margin-top: 0;">Informace o uživateli:</h2>
               <div class="info-item"><strong>Jméno:</strong> ${userInfo.firstName} ${userInfo.lastName}</div>
@@ -73,7 +71,6 @@ serve(async (req) => {
               <div class="info-item"><strong>Telefon:</strong> ${userInfo.phone}</div>
               <div class="info-item"><strong>Datum odeslání:</strong> ${new Date(submittedAt).toLocaleString('cs-CZ')}</div>
             </div>
-            
             ${answersHtml}
           </div>
         </body>
@@ -90,7 +87,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: "Quiz Platform <onboarding@resend.dev>",
         reply_to: "timas.kusnir@gmail.com",
-        to: ["tkusnir@tesla.com"],
+        to: ["timas.kusnir@gmail.com"],
         subject: `Quiz ${userInfo.firstName} ${userInfo.lastName}`,
         html: emailHtml,
       }),
