@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,8 @@ import { Loader2 } from 'lucide-react';
 
 export default function QuizPage() {
   const navigate = useNavigate();
-  const { quizId } = useParams<{ quizId: string }>();
+  const [searchParams] = useSearchParams();
+  const quizId = searchParams.get('id');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState<string>('');

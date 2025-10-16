@@ -197,7 +197,7 @@ export default function AdminDashboard() {
   };
 
   const copyQuizLink = (quizId: string) => {
-    const link = `${window.location.origin}/quiz/${quizId}`;
+    const link = `${window.location.origin}/?quiz=${quizId}`;
     navigator.clipboard.writeText(link);
     toast.success('Link zkopírován do schránky');
   };

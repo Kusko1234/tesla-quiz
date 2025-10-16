@@ -58,7 +58,7 @@ export default function CustomerRegistration() {
     localStorage.setItem('userInfo', JSON.stringify(formData));
 
     if (quizId) {
-      navigate(`/quiz/${quizId}`);
+      navigate(`/quiz?id=${quizId}`);
     } else {
       toast.error('Chybí ID quizu');
     }
