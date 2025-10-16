@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function QuizPage() {
   const navigate = useNavigate();
+  const { quizId } = useParams<{ quizId: string }>();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState<string>('');
@@ -27,16 +28,23 @@ export default function QuizPage() {
       navigate('/');
       return;
     }
-    loadActiveQuiz();
-  }, [navigate]);
+    if (quizId) {
+      loadQuiz();
+    } else {
+      toast.error('Chybí ID quizu');
+      navigate('/');
+    }
+  }, [navigate, quizId]);
 
-  const loadActiveQuiz = async () => {
+  const loadQuiz = async () => {
+    if (!quizId) return;
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('active_quiz')
+        .from('quiz_templates')
         .select('*')
-        .eq('id', 1)
+        .eq('id', quizId)
+        .eq('is_active', true)
         .single();
 
       if (error) {
@@ -47,7 +55,7 @@ export default function QuizPage() {
       }
 
       if (!data) {
-        toast.error('Žádný aktivní quiz nebyl nalezen');
+        toast.error('Quiz nebyl nalezen');
         navigate('/');
         return;
       }
@@ -96,7 +104,7 @@ export default function QuizPage() {
 
   const handleSubmit = async (finalAnswers: QuizAnswer[]) => {
     const userInfoStr = localStorage.getItem('userInfo');
-    if (!userInfoStr) return;
+    if (!userInfoStr || !quizId) return;
 
     const userInfo: UserInfo = JSON.parse(userInfoStr);
 
@@ -118,7 +126,7 @@ export default function QuizPage() {
         .from('quiz_submissions')
         .insert({
           user_info: userInfo,
-          quiz_id: '1',
+          quiz_id: quizId,
           quiz_title: quizTitle,
           answers: answersWithQuestions,
         });
@@ -172,7 +180,7 @@ export default function QuizPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="py-12">
-            <p className="text-lg text-muted-foreground">Žádný aktivní quiz nebyl nalezen</p>
+            <p className="text-lg text-muted-foreground">Žádný quiz nebyl nalezen</p>
             <Button onClick={() => navigate('/')} className="mt-4">
               Zpět na hlavní stránku
             </Button>

@@ -13,6 +13,16 @@ export interface Quiz {
   createdAt: string;
 }
 
+export interface QuizTemplate {
+  id: string;
+  title: string;
+  description: string;
+  questions: Question[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserInfo {
   firstName: string;
   lastName: string;

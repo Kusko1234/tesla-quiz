@@ -14,7 +14,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<CustomerRegistration />} />
-          <Route path="/quiz" element={<QuizPage />} />
+          <Route path="/quiz/:quizId" element={<QuizPage />} />
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
