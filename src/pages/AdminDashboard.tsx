@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [saving, setSaving] = useState(false);
   const [quizTemplates, setQuizTemplates] = useState<QuizTemplate[]>([]);
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('templates');
 
   useEffect(() => {
     const isAuth = localStorage.getItem('adminAuth');
@@ -101,6 +102,7 @@ export default function AdminDashboard() {
     setQuizDescription('');
     setQuestions([{ id: '1', question: '', options: ['', '', '', ''], type: 'single' }]);
     setEditingQuizId(null);
+    setActiveTab('edit');
   };
 
   const handleEditQuiz = (quiz: QuizTemplate) => {
@@ -108,6 +110,7 @@ export default function AdminDashboard() {
     setQuizDescription(quiz.description || '');
     setQuestions(quiz.questions as Question[]);
     setEditingQuizId(quiz.id);
+    setActiveTab('edit');
   };
   const handleSaveQuiz = async () => {
     try {
@@ -160,6 +163,7 @@ export default function AdminDashboard() {
       }
 
       await loadQuizTemplates();
+      setActiveTab('templates');
       handleNewQuiz();
     } catch (error) {
       console.error('Error:', error);
@@ -233,7 +237,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <Tabs defaultValue="templates" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="templates">
               <FileText className="w-4 h-4 mr-2" />
@@ -247,7 +251,7 @@ export default function AdminDashboard() {
 
           <TabsContent value="templates" className="space-y-4">
             <div className="flex justify-end">
-              <Button onClick={() => { handleNewQuiz(); document.querySelector('[value="edit"]')?.click(); }}>
+              <Button onClick={handleNewQuiz}>
                 <Plus className="w-4 h-4 mr-2" />
                 Vytvořit nový quiz
               </Button>
@@ -258,7 +262,7 @@ export default function AdminDashboard() {
                 <CardContent className="py-12 text-center">
                   <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-lg text-muted-foreground">Zatím nemáte žádné quizy</p>
-                  <Button onClick={() => document.querySelector('[value="edit"]')?.click()} variant="outline" className="mt-4">
+                  <Button onClick={handleNewQuiz} variant="outline" className="mt-4">
                     Vytvořit první quiz
                   </Button>
                 </CardContent>
@@ -282,7 +286,7 @@ export default function AdminDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex gap-2">
-                      <Button onClick={() => { handleEditQuiz(quiz); document.querySelector('[value="edit"]')?.click(); }} variant="outline" className="flex-1">
+                      <Button onClick={() => handleEditQuiz(quiz)} variant="outline" className="flex-1">
                         <Edit2 className="w-4 h-4 mr-2" />
                         Editovat
                       </Button>
