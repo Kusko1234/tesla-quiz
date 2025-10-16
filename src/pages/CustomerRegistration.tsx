@@ -65,27 +65,26 @@ export default function CustomerRegistration() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
-      <div className="w-full max-w-md space-y-4">
-        <div className="flex justify-end">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate('/admin/login')}
-          >
-            <Lock className="w-4 h-4 mr-2" />
-            Admin přihlášení
-          </Button>
-        </div>
-
-        <Card className="w-full">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-3xl font-bold">
-              {quizTitle || 'Vítejte v Quiz platformě'}
-            </CardTitle>
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background py-6 px-4">
+      <div className="w-full max-w-md mx-auto">
+        <Card className="w-full shadow-lg">
+          <CardHeader className="space-y-1 pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-bold">
+                {quizTitle || 'Quiz'}
+              </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/admin/login')}
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Admin přihlášení
+              </Button>
+            </div>
             <CardDescription>Vyplňte prosím své údaje pro pokračování</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             {!quizId ? (
               <div className="py-8 text-center">
                 <p className="text-muted-foreground">Chybí ID quizu. Použijte správný link.</p>
