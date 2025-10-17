@@ -19,7 +19,7 @@ const Index = () => {
       // Redirect to registration page with quiz ID immediately
       navigate(`/register?quiz=${quizId}`, { replace: true });
     }
-  }, [navigate]);
+  }, [searchParams, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
