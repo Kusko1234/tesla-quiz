@@ -201,9 +201,11 @@ export default function AdminDashboard() {
   };
 
   const copyQuizLink = (quizId: string) => {
-    const link = `${window.location.origin}/?quiz=${quizId}`;
+    // Use the Netlify production URL for the quiz link
+    const netlifyUrl = 'https://tesla-quiz-6vwvhgvn.netlify.app';
+    const link = `${netlifyUrl}/?quiz=${quizId}`;
     navigator.clipboard.writeText(link);
-    toast.success('Link zkopírován do schránky');
+    toast.success('Odkaz zkopírován: ' + link);
   };
 
   if (loading) {
