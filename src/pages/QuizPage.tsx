@@ -190,7 +190,9 @@ export default function QuizPage() {
     setAnswers(newAnswers);
 
     if (currentQuestion === questions.length - 1) {
-      handleSubmit(newAnswers);
+      // Last question - submit immediately with updated answers
+      setSubmitting(true);
+      setTimeout(() => handleSubmit(newAnswers), 0);
     } else {
       setCurrentQuestion(currentQuestion + 1);
       setCurrentAnswer('');
@@ -208,14 +210,16 @@ export default function QuizPage() {
   const handleSubmit = async (finalAnswers: QuizAnswer[]) => {
     const userInfoStr = localStorage.getItem('userInfo');
     const consentsStr = localStorage.getItem('consents');
-    if (!userInfoStr || !quizId) return;
+    if (!userInfoStr || !quizId) {
+      toast.error('Chybí uživatelské údaje');
+      setSubmitting(false);
+      return;
+    }
 
     const userInfo: UserInfo = JSON.parse(userInfoStr);
     const consents = consentsStr ? JSON.parse(consentsStr) : { terms: false, marketing: false, gdpr: false };
 
     try {
-      setSubmitting(true);
-
       // Prepare answers with questions for email
       const answersWithQuestions = finalAnswers.map(answer => {
         const question = questions.find(q => q.id === answer.questionId);
