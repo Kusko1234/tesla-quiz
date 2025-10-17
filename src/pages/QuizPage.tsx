@@ -25,10 +25,7 @@ export default function QuizPage() {
 
   useEffect(() => {
     const userInfo = localStorage.getItem('userInfo');
-    if (!userInfo) {
-      navigate('/');
-      return;
-    }
+    // Allow quiz to load even without userInfo, just redirect after completion
     if (quizId) {
       loadQuiz();
     } else {
@@ -111,8 +108,8 @@ export default function QuizPage() {
   const handleSubmit = async (finalAnswers: QuizAnswer[]) => {
     const userInfoStr = localStorage.getItem('userInfo');
     const consentsStr = localStorage.getItem('consents');
-    if (!userInfoStr || !quizId) {
-      toast.error('Chybí uživatelské údaje');
+    if (!quizId) {
+      toast.error('Chybí ID quizu');
       setSubmitting(false);
       return;
     }
@@ -121,13 +118,18 @@ export default function QuizPage() {
     let consents: any;
 
     try {
-      userInfo = JSON.parse(userInfoStr);
+      if (userInfoStr) {
+        userInfo = JSON.parse(userInfoStr);
+      } else {
+        // Fallback if userInfo not in localStorage
+        userInfo = { firstName: 'Uživatel', lastName: 'Soutěže', email: '', phone: '' };
+      }
       consents = consentsStr ? JSON.parse(consentsStr) : { terms: false, marketing: false, gdpr: false };
     } catch (error) {
       console.error('Error parsing stored data:', error);
-      toast.error('Chyba při čtení uživatelských dat');
-      setSubmitting(false);
-      return;
+      // Continue even if parsing fails
+      userInfo = { firstName: 'Uživatel', lastName: 'Soutěže', email: '', phone: '' };
+      consents = { terms: false, marketing: false, gdpr: false };
     }
 
     try {
