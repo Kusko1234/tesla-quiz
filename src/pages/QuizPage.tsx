@@ -16,6 +16,7 @@ import {
   getUnsyncedSubmissions, 
   markSubmissionSynced 
 } from '@/lib/offline-storage';
+import { cacheQuiz, getCachedQuiz } from '@/lib/quiz-cache';
 
 export default function QuizPage() {
   const navigate = useNavigate();
@@ -108,32 +109,66 @@ export default function QuizPage() {
     if (!quizId) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('quiz_templates')
-        .select('*')
-        .eq('id', quizId)
-        .eq('is_active', true)
-        .single();
 
-      if (error) {
-        console.error('Error loading quiz:', error);
-        toast.error('Chyba při načítání quizu');
-        navigate('/');
-        return;
+      // Try to load from Supabase if online
+      if (online) {
+        const { data, error } = await supabase
+          .from('quiz_templates')
+          .select('*')
+          .eq('id', quizId)
+          .eq('is_active', true)
+          .single();
+
+        if (error) {
+          console.error('Error loading quiz:', error);
+
+          // Try to use cached version if online load fails
+          const cached = getCachedQuiz(quizId);
+          if (cached) {
+            setQuizTitle(cached.title);
+            setQuestions(cached.questions);
+            toast.warning('Používám offline verzi quizu (poslední uložená verze)');
+            return;
+          }
+
+          toast.error('Chyba při načítání quizu');
+          navigate('/');
+          return;
+        }
+
+        if (!data) {
+          toast.error('Quiz nebyl nalezen');
+          navigate('/');
+          return;
+        }
+
+        setQuizTitle(data.title);
+        setQuestions(data.questions as Question[]);
+      } else {
+        // Offline - use cached version
+        const cached = getCachedQuiz(quizId);
+        if (cached) {
+          setQuizTitle(cached.title);
+          setQuestions(cached.questions);
+          toast.info('Offline režim - používám poslední uloženou verzi quizu');
+        } else {
+          toast.error('Quiz nebyl nalezen. Nejdříve jej načtěte online.');
+          navigate('/');
+        }
       }
-
-      if (!data) {
-        toast.error('Quiz nebyl nalezen');
-        navigate('/');
-        return;
-      }
-
-      setQuizTitle(data.title);
-      setQuestions(data.questions as Question[]);
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Chyba při načítání quizu');
-      navigate('/');
+
+      // Fallback to cached version on error
+      const cached = getCachedQuiz(quizId);
+      if (cached) {
+        setQuizTitle(cached.title);
+        setQuestions(cached.questions);
+        toast.warning('Chyba při načítání. Používám offline verzi.');
+      } else {
+        toast.error('Chyba při načítání quizu');
+        navigate('/');
+      }
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import { UserInfo } from '@/types/quiz';
 import { Lock, Loader2, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { cacheQuiz } from '@/lib/quiz-cache';
 
 const TERMS_OF_SERVICE = `🧾 Pravidla spotřebitelské soutěže
 
@@ -130,7 +131,7 @@ export default function CustomerRegistration() {
     try {
       const { data, error } = await supabase
         .from('quiz_templates')
-        .select('title')
+        .select('title, questions')
         .eq('id', quizId)
         .single();
 
@@ -140,6 +141,11 @@ export default function CustomerRegistration() {
       }
 
       setQuizTitle(data.title);
+
+      // Cache the quiz data for offline use
+      if (data.questions) {
+        cacheQuiz(quizId, data.title, data.questions as any);
+      }
     } catch (error) {
       console.error('Error loading quiz:', error);
     }
