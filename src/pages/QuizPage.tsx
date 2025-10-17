@@ -45,7 +45,6 @@ export default function QuizPage() {
         .from('quiz_templates')
         .select('*')
         .eq('id', quizId)
-        .eq('is_active', true)
         .single();
 
       if (error) {
