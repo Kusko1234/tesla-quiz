@@ -202,7 +202,7 @@ export default function AdminDashboard() {
 
   const copyQuizLink = (quizId: string) => {
     // Use the Netlify production URL for the quiz link
-    const netlifyUrl = 'https://tesla-quiz-6vwvhgvn.netlify.app';
+    const netlifyUrl = 'https://tesla-quiz.netlify.app';
     const link = `${netlifyUrl}/?quiz=${quizId}`;
     navigator.clipboard.writeText(link);
     toast.success('Odkaz zkopírován: ' + link);
