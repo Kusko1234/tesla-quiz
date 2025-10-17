@@ -175,35 +175,44 @@ export default function QuizPage() {
   };
 
   const handleNext = () => {
-    if (!currentAnswer) {
+    if (!currentAnswer && currentAnswer !== '') {
       toast.error('Prosím vyberte odpověď');
       return;
     }
 
+    // Save current answer
     const newAnswers = [...answers];
-    const existingIndex = newAnswers.findIndex(a => a.questionId === questions[currentQuestion].id);
+    const questionId = questions[currentQuestion].id;
+    const existingIndex = newAnswers.findIndex(a => a.questionId === questionId);
     if (existingIndex >= 0) {
-      newAnswers[existingIndex] = { questionId: questions[currentQuestion].id, answer: currentAnswer };
+      newAnswers[existingIndex] = { questionId, answer: currentAnswer };
     } else {
-      newAnswers.push({ questionId: questions[currentQuestion].id, answer: currentAnswer });
+      newAnswers.push({ questionId, answer: currentAnswer });
     }
     setAnswers(newAnswers);
 
+    // Check if this is the last question
     if (currentQuestion === questions.length - 1) {
-      // Last question - submit immediately with updated answers
+      // Submit with the newly updated answers
       setSubmitting(true);
-      setTimeout(() => handleSubmit(newAnswers), 0);
+      handleSubmit(newAnswers);
     } else {
-      setCurrentQuestion(currentQuestion + 1);
-      setCurrentAnswer('');
+      // Move to next question
+      const nextQuestionIndex = currentQuestion + 1;
+      setCurrentQuestion(nextQuestionIndex);
+
+      // Load answer for next question if exists
+      const nextAnswer = newAnswers.find(a => a.questionId === questions[nextQuestionIndex].id);
+      setCurrentAnswer(nextAnswer?.answer as string || '');
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-      const previousAnswer = answers.find(a => a.questionId === questions[currentQuestion - 1].id);
+      const previousQuestionIndex = currentQuestion - 1;
+      const previousAnswer = answers.find(a => a.questionId === questions[previousQuestionIndex].id);
       setCurrentAnswer(previousAnswer?.answer as string || '');
+      setCurrentQuestion(previousQuestionIndex);
     }
   };
 
