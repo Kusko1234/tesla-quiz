@@ -16,10 +16,10 @@ const Index = () => {
   useEffect(() => {
     const quizId = searchParams.get('quiz');
     if (quizId) {
-      // Redirect to registration page with quiz ID
-      navigate(`/register?quiz=${quizId}`);
+      // Redirect to registration page with quiz ID immediately
+      window.location.href = `/register?quiz=${quizId}`;
     }
-  }, [searchParams, navigate]);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
