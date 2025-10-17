@@ -8,26 +8,8 @@ import ThankYou from "@/pages/ThankYou";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/NotFound";
-import { useEffect } from "react";
-import { setupSyncListener, syncOfflineSubmissions } from "@/lib/sync-service";
 
 function App() {
-  useEffect(() => {
-    // Register Service Worker for offline support
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('Service Worker registered'))
-        .catch(err => console.log('Service Worker registration failed:', err));
-    }
-
-    // Setup sync listener
-    setupSyncListener();
-
-    // Try to sync on app load if online
-    if (navigator.onLine) {
-      syncOfflineSubmissions();
-    }
-  }, []);
   return (
     <ThemeProvider defaultTheme="light" storageKey="quiz-theme">
       <BrowserRouter>
