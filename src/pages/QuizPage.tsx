@@ -9,7 +9,13 @@ import { Progress } from '@/components/ui/progress';
 import { Question, QuizAnswer, UserInfo } from '@/types/quiz';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wifi, WifiOff } from 'lucide-react';
+import { 
+  saveSubmissionOffline, 
+  isOnline, 
+  getUnsyncedSubmissions, 
+  markSubmissionSynced 
+} from '@/lib/offline-storage';
 
 export default function QuizPage() {
   const navigate = useNavigate();
@@ -22,6 +28,20 @@ export default function QuizPage() {
   const [quizTitle, setQuizTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [online, setOnline] = useState(isOnline());
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const userInfo = localStorage.getItem('userInfo');
@@ -36,6 +56,53 @@ export default function QuizPage() {
       navigate('/');
     }
   }, [navigate, quizId]);
+
+  useEffect(() => {
+    if (online) {
+      syncOfflineSubmissions();
+    }
+  }, [online]);
+
+  const syncOfflineSubmissions = async () => {
+    const unsynced = await getUnsyncedSubmissions();
+    for (const submission of unsynced) {
+      try {
+        const { error: dbError } = await supabase
+          .from('quiz_submissions')
+          .insert({
+            user_info: submission.userInfo,
+            quiz_id: submission.quizId,
+            quiz_title: submission.quizTitle,
+            answers: submission.answers,
+            consents: submission.consents,
+          });
+
+        if (dbError) {
+          console.error('Error syncing submission:', dbError);
+          continue;
+        }
+
+        const { error: emailError } = await supabase.functions.invoke('send-quiz-email', {
+          body: {
+            userInfo: submission.userInfo,
+            quizTitle: submission.quizTitle,
+            answers: submission.answers,
+            consents: submission.consents,
+            submittedAt: submission.submittedAt,
+          },
+        });
+
+        if (emailError) {
+          console.error('Error sending email during sync:', emailError);
+        }
+
+        await markSubmissionSynced(submission.id);
+        toast.success('Offline odpověď byla úspěšně synchronizována');
+      } catch (error) {
+        console.error('Error during offline sync:', error);
+      }
+    }
+  };
 
   const loadQuiz = async () => {
     if (!quizId) return;
@@ -124,47 +191,73 @@ export default function QuizPage() {
         };
       });
 
-      // Save submission to database
-      const { error: dbError } = await supabase
-        .from('quiz_submissions')
-        .insert({
-          user_info: userInfo,
-          quiz_id: quizId,
-          quiz_title: quizTitle,
-          answers: answersWithQuestions,
-          consents: consents,
+      // If offline, save to IndexedDB
+      if (!online) {
+        try {
+          await saveSubmissionOffline({
+            userInfo,
+            quizId,
+            quizTitle,
+            answers: answersWithQuestions,
+            consents,
+            submittedAt: new Date().toISOString(),
+          });
+
+          toast.success('Quiz byl uložen offline. Bude odeslán jakmile se připojíte k internetu.');
+          localStorage.removeItem('userInfo');
+          localStorage.removeItem('consents');
+          navigate('/thank-you');
+          return;
+        } catch (error) {
+          console.error('Error saving offline:', error);
+          toast.error('Chyba při ukládání quizu offline');
+          return;
+        }
+      }
+
+      // If online, save to database and send email
+      try {
+        // Save submission to database
+        const { error: dbError } = await supabase
+          .from('quiz_submissions')
+          .insert({
+            user_info: userInfo,
+            quiz_id: quizId,
+            quiz_title: quizTitle,
+            answers: answersWithQuestions,
+            consents: consents,
+          });
+
+        if (dbError) {
+          console.error('Error saving submission:', dbError);
+          toast.error('Chyba při ukládání odpovědí');
+          return;
+        }
+
+        // Send email via Edge Function with consents
+        const { error: emailError } = await supabase.functions.invoke('send-quiz-email', {
+          body: {
+            userInfo,
+            quizTitle,
+            answers: answersWithQuestions,
+            consents,
+            submittedAt: new Date().toISOString(),
+          },
         });
 
-      if (dbError) {
-        console.error('Error saving submission:', dbError);
-        toast.error('Chyba při ukládání odpovědí');
-        return;
+        if (emailError) {
+          console.error('Error sending email:', emailError);
+          toast.warning('Odpovědi byly uloženy, ale email se nepodařilo odeslat');
+        } else {
+          toast.success('Quiz byl úspěšně odeslán!');
+        }
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('consents');
+        navigate('/thank-you');
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('Chyba při odesílání quizu');
       }
-
-      // Send email via Edge Function with consents
-      const { error: emailError } = await supabase.functions.invoke('send-quiz-email', {
-        body: {
-          userInfo,
-          quizTitle,
-          answers: answersWithQuestions,
-          consents,
-          submittedAt: new Date().toISOString(),
-        },
-      });
-
-      if (emailError) {
-        console.error('Error sending email:', emailError);
-        toast.warning('Odpovědi byly uloženy, ale email se nepodařilo odeslat');
-      } else {
-        toast.success('Quiz byl úspěšně odeslán!');
-      }
-
-      localStorage.removeItem('userInfo');
-      localStorage.removeItem('consents');
-      navigate('/thank-you');
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Chyba při odesílání quizu');
     } finally {
       setSubmitting(false);
     }
@@ -204,9 +297,26 @@ export default function QuizPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Otázka {currentQuestion + 1} z {questions.length}</span>
-              <span>{Math.round(progress)}%</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Otázka {currentQuestion + 1} z {questions.length}</span>
+                  <div className="flex items-center gap-2">
+                    {online ? (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <Wifi className="w-4 h-4" />
+                        <span>Online</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-orange-600">
+                        <WifiOff className="w-4 h-4" />
+                        <span>Offline</span>
+                      </div>
+                    )}
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <Progress value={progress} className="h-2" />
           </div>
@@ -247,7 +357,7 @@ export default function QuizPage() {
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Odesílání...
+                  {online ? 'Odesílání...' : 'Ukládání...'}
                 </>
               ) : (
                 currentQuestion === questions.length - 1 ? 'Odeslat' : 'Další'
