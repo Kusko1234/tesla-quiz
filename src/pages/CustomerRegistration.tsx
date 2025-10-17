@@ -11,6 +11,7 @@ import { UserInfo } from '@/types/quiz';
 import { Lock, Loader2, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import SplashScreen from '@/components/SplashScreen';
 
 const TERMS_OF_SERVICE = `🧾 Pravidla spotřebitelské soutěže
 
@@ -117,12 +118,20 @@ export default function CustomerRegistration() {
   const [loading, setLoading] = useState(false);
   const [quizTitle, setQuizTitle] = useState('');
   const [showTerms, setShowTerms] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (quizId) {
       loadQuizTitle();
     }
   }, [quizId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000); // Show splash screen for 3 seconds
+    return () => clearTimeout(timer);
+  }, []);
 
   const loadQuizTitle = async () => {
     if (!quizId) return;
@@ -168,6 +177,7 @@ export default function CustomerRegistration() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background py-6 px-4">
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
       <div className="w-full max-w-md mx-auto">
         <Card className="w-full shadow-lg">
           <CardHeader className="space-y-1 pb-4">
