@@ -16,6 +16,11 @@ interface QuizSubmission {
     answer: string | string[];
   }>;
   submittedAt: string;
+  consents?: {
+    terms: boolean;
+    marketing: boolean;
+    gdpr: boolean;
+  };
 }
 
 const corsHeaders = {
@@ -31,7 +36,7 @@ serve(async (req) => {
 
   try {
     const submission: QuizSubmission = await req.json();
-    const { userInfo, quizTitle, answers, submittedAt } = submission;
+    const { userInfo, quizTitle, answers, submittedAt, consents } = submission;
 
     // Build email HTML content
     let answersHtml = "<h2>Odpovědi:</h2><div style='margin-top: 20px;'>";
@@ -44,6 +49,19 @@ serve(async (req) => {
       `;
     });
     answersHtml += "</div>";
+
+    // Build consents HTML if available
+    let consentsHtml = "";
+    if (consents) {
+      consentsHtml = `
+        <h2>Souhlasy:</h2>
+        <div style="margin-top: 20px; padding: 15px; background-color: #e8f4f8; border-radius: 8px;">
+          <div style="margin: 8px 0;"><strong>✓ Podmínky soutěže:</strong> ${consents.terms ? "Ano" : "Ne"}</div>
+          <div style="margin: 8px 0;"><strong>✓ Emailová komunikace a aktualizace od Tesly:</strong> ${consents.marketing ? "Ano" : "Ne"}</div>
+          <div style="margin: 8px 0;"><strong>✓ Zpracování osobních údajů (GDPR):</strong> ${consents.gdpr ? "Ano" : "Ne"}</div>
+        </div>
+      `;
+    }
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -71,6 +89,7 @@ serve(async (req) => {
               <div class="info-item"><strong>Telefon:</strong> ${userInfo.phone}</div>
               <div class="info-item"><strong>Datum odeslání:</strong> ${new Date(submittedAt).toLocaleString('cs-CZ')}</div>
             </div>
+            ${consentsHtml}
             ${answersHtml}
           </div>
         </body>

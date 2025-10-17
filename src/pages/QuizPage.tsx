@@ -105,9 +105,11 @@ export default function QuizPage() {
 
   const handleSubmit = async (finalAnswers: QuizAnswer[]) => {
     const userInfoStr = localStorage.getItem('userInfo');
+    const consentsStr = localStorage.getItem('consents');
     if (!userInfoStr || !quizId) return;
 
     const userInfo: UserInfo = JSON.parse(userInfoStr);
+    const consents = consentsStr ? JSON.parse(consentsStr) : { terms: false, marketing: false, gdpr: false };
 
     try {
       setSubmitting(true);
@@ -130,6 +132,7 @@ export default function QuizPage() {
           quiz_id: quizId,
           quiz_title: quizTitle,
           answers: answersWithQuestions,
+          consents: consents,
         });
 
       if (dbError) {
@@ -138,12 +141,13 @@ export default function QuizPage() {
         return;
       }
 
-      // Send email via Edge Function
+      // Send email via Edge Function with consents
       const { error: emailError } = await supabase.functions.invoke('send-quiz-email', {
         body: {
           userInfo,
           quizTitle,
           answers: answersWithQuestions,
+          consents,
           submittedAt: new Date().toISOString(),
         },
       });
@@ -156,6 +160,7 @@ export default function QuizPage() {
       }
 
       localStorage.removeItem('userInfo');
+      localStorage.removeItem('consents');
       navigate('/thank-you');
     } catch (error) {
       console.error('Error:', error);
