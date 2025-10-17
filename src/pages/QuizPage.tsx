@@ -35,33 +35,43 @@ export default function QuizPage() {
   }, [navigate, quizId]);
 
   const loadQuiz = async () => {
-    if (!quizId) return;
+    if (!quizId) {
+      console.error('No quiz ID found in URL');
+      toast.error('Chybí ID quizu v URL');
+      navigate('/');
+      return;
+    }
     try {
       setLoading(true);
+      console.log('Loading quiz with ID:', quizId);
       const { data, error } = await supabase
         .from('quiz_templates')
         .select('*')
         .eq('id', quizId)
         .single();
 
+      console.log('Supabase response:', { data, error });
+
       if (error) {
         console.error('Error loading quiz:', error);
-        toast.error('Chyba při načítání quizu');
+        toast.error(`Chyba při načítání quizu: ${error.message}`);
         navigate('/');
         return;
       }
 
       if (!data) {
+        console.error('No data returned for quiz ID:', quizId);
         toast.error('Quiz nebyl nalezen');
         navigate('/');
         return;
       }
 
+      console.log('Quiz loaded successfully:', data.title);
       setQuizTitle(data.title);
       setQuestions(data.questions as Question[]);
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Chyba při načítání quizu');
+      console.error('Unexpected error:', error);
+      toast.error('Neočekávaná chyba při načítání quizu');
       navigate('/');
     } finally {
       setLoading(false);
