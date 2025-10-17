@@ -17,9 +17,9 @@ const Index = () => {
     const quizId = searchParams.get('quiz');
     if (quizId) {
       // Redirect to registration page with quiz ID immediately
-      window.location.href = `/register?quiz=${quizId}`;
+      navigate(`/register?quiz=${quizId}`, { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
