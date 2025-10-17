@@ -73,7 +73,8 @@ export default function QuizPage() {
   };
 
   const handleNext = () => {
-    if (!currentAnswer) {
+    // Allow empty string for textarea but require selection for radio
+    if (questions[currentQuestion].type === 'single' && !currentAnswer) {
       toast.error('Prosím vyberte odpověď');
       return;
     }
@@ -117,8 +118,18 @@ export default function QuizPage() {
       return;
     }
 
-    const userInfo: UserInfo = JSON.parse(userInfoStr);
-    const consents = consentsStr ? JSON.parse(consentsStr) : { terms: false, marketing: false, gdpr: false };
+    let userInfo: UserInfo;
+    let consents: any;
+
+    try {
+      userInfo = JSON.parse(userInfoStr);
+      consents = consentsStr ? JSON.parse(consentsStr) : { terms: false, marketing: false, gdpr: false };
+    } catch (error) {
+      console.error('Error parsing stored data:', error);
+      toast.error('Chyba při čtení uživatelských dat');
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const answersWithQuestions = finalAnswers.map(answer => {
@@ -130,6 +141,7 @@ export default function QuizPage() {
         };
       });
 
+      // Save to database
       const { error: dbError } = await supabase
         .from('quiz_submissions')
         .insert({
@@ -141,11 +153,13 @@ export default function QuizPage() {
         });
 
       if (dbError) {
-        console.error('Error saving submission:', dbError);
-        toast.error('Chyba při ukládání odpovědí');
+        console.error('Database error:', dbError);
+        toast.error(`Chyba při ukládání: ${dbError.message}`);
+        setSubmitting(false);
         return;
       }
 
+      // Send email
       const { error: emailError } = await supabase.functions.invoke('send-quiz-email', {
         body: {
           userInfo,
@@ -157,7 +171,7 @@ export default function QuizPage() {
       });
 
       if (emailError) {
-        console.error('Error sending email:', emailError);
+        console.error('Email error:', emailError);
         toast.warning('Odpovědi byly uloženy, ale email se nepodařilo odeslat');
       } else {
         toast.success('Quiz byl úspěšně odeslán!');
@@ -167,8 +181,8 @@ export default function QuizPage() {
       localStorage.removeItem('consents');
       navigate('/thank-you');
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Chyba při odesílání quizu');
+      console.error('Unexpected error:', error);
+      toast.error('Neočekávaná chyba při odesílání quizu');
     } finally {
       setSubmitting(false);
     }
