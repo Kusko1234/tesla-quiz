@@ -14,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 export default function QuizPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const quizId = searchParams.get('id');
+  const quizId = searchParams.get('quiz');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState<string>('');
